@@ -104,6 +104,7 @@ async def create_recipe(
     ingredient_groups: list[dict] | None = None,
     steps: Sequence[dict | str] | None = None,
     image_path: str | None = None,
+    auto_scale: bool = False,
     language: str = MC_API_DEFAULT_LANGUAGE,
 ) -> dict:
     """Create a new user recipe as a DRAFT under the logged-in account.
@@ -263,6 +264,7 @@ async def edit_recipe(
     ingredient_groups: list[dict] | None = None,
     steps: Sequence[dict | str] | None = None,
     image_path: str | None = None,
+    auto_scale: bool = False,
     language: str = MC_API_DEFAULT_LANGUAGE,
 ) -> dict:
     """Edit one of the logged-in user's own recipes. Only the fields you pass are

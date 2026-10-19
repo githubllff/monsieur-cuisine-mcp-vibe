@@ -19,6 +19,11 @@ from .lifecycle import (
     publish_recipe,
     restore_recipe,
 )
+from .paprika import (
+    get_paprika_recipe,
+    import_paprika_recipes,
+    list_paprika_recipes,
+)
 from .search import get_recipe, get_recipe_filters, search_recipes
 
 __all__ = [
@@ -27,9 +32,12 @@ __all__ = [
     "create_recipe",
     "delete_recipe",
     "edit_recipe",
+    "get_paprika_recipe",
     "get_recipe",
     "get_recipe_creation_options",
     "get_recipe_filters",
+    "import_paprika_recipes",
+    "list_paprika_recipes",
     "list_favorite_recipes",
     "list_my_recipes",
     "publish_recipe",

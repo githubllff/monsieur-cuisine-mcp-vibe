@@ -211,6 +211,35 @@ listing), and `authoring` (create/edit).
 - **Rate limiting.** Bursts of write calls can get temporarily throttled — space
   them out.
 
+## Vibe-coded extensions in this fork
+
+This fork (published as `monsieur-cuisine-mcp-vibe`) was built conversationally on
+top of the original server — i.e. **vibe-coded**, end to end, with an AI coding
+assistant driving the changes. It keeps the original tools intact and adds:
+
+- **English (`en-US`) by default** for all Monsieur Cuisine operations (the
+  upstream default is Polish `pl-PL`), including the matching login locale.
+- **Paprika import** (`list_paprika_recipes`, `get_paprika_recipe`,
+  `import_paprika_recipes`): reads a Paprika `.paprikarecipes.zip` export and
+  converts each recipe — splitting ingredient lines into amount/unit/name,
+  mapping Thermomix free-text notation (`3 sec/speed 7`, `15 min/100°C/speed 1`,
+  `212°F/reverse speed 1`, `weigh 50 g`, oven/Varoma settings) onto Monsieur
+  Cuisine Smart device programs (`customized`, `slow_cooking`, `roasting`,
+  `steaming`, `kneading`, `scale`), parsing servings/times/nutrition, uploading
+  the embedded photo as the cover image, mapping categories/difficulty onto the
+  locale's ids, then creating and (optionally) publishing each recipe. Re-runs
+  are idempotent via `skip_existing`.
+- **Automatic `scale` weigh steps** wherever a recipe calls for weighing, so
+  gram-weighted ingredients actually get a weighing step.
+- **Pre-publish analysis** (`analyze_recipe`) and a publish gate: `publish_recipe`
+  now runs the analyzer first and refuses to publish recipes with blocking
+  issues (missing quantities, empty step titles, missing cover photo).
+- **Private publishing by default** for the user's own collection, plus nutrient
+  lookup/estimation guidance.
+
+Treat this fork with the same caution as the upstream: reverse-engineered API,
+no unit tests, writes to your real account.
+
 ## License
 
 Apache-2.0.

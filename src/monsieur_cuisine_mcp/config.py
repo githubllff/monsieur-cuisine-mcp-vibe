@@ -41,7 +41,7 @@ MC_SESSION_COOKIE_PREFIXES = ("wordpress_logged_in_", "lidl_sso_id_token")
 
 # Public recipe search API (no authentication required)
 MC_API_BASE_URL = "https://mc-api.tecpal.com"
-MC_API_DEFAULT_LANGUAGE = "pl-PL"
+MC_API_DEFAULT_LANGUAGE = "en-US"
 MC_API_REQUEST_TIMEOUT_SECONDS = 15.0
 
 # Same-origin proxy used by the web app for endpoints that require a logged-in

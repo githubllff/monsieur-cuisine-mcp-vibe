@@ -6,6 +6,7 @@ import urllib.parse
 
 from ..config import MC_API_DEFAULT_LANGUAGE, MC_API_WRITE_TIMEOUT_SECONDS
 from .client import MCRequestError, _call_proxy_api
+from . import analysis
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,12 @@ async def publish_recipe(
     forbids it (there is no "unpublish to draft"). To take a recipe down, either
     switch it to private (private=True) or remove it with delete_recipe.
     """
+    report = analysis.analyze_recipe_details(await _get_own_recipe(recipe_id, language, action="published"))
+    if report["issues"]:
+        raise MCRequestError(
+            f"Recipe {recipe_id} has blocking issues before publish: "
+            f"{'; '.join(report['issues'])}. Fix them first (run analyze_recipe)."
+        )
     status = "private-publish" if private else "pending"
     result = await _set_recipe_status(recipe_id, status, language, action="published")
     return {
@@ -173,6 +180,7 @@ async def publish_recipe(
         "published": True,
         "visibility": "private" if private else "public",
         "in_review": not private,
+        "analysis": report,
     }
 
 

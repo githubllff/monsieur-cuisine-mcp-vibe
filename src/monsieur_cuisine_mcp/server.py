@@ -4,6 +4,7 @@ import logging
 from fastmcp import FastMCP
 
 from . import recipes
+from .recipes import analysis
 from .config import MC_API_DEFAULT_LANGUAGE
 from .logging_config import setup_logging
 
@@ -593,6 +594,131 @@ async def publish_recipe(
         language: Locale, e.g. "pl-PL", "en-US".
     """
     return await recipes.publish_recipe(recipe_id=recipe_id, private=private, language=language)
+
+
+@mcp.tool
+async def analyze_recipe(
+    recipe_id: int,
+    language: str = MC_API_DEFAULT_LANGUAGE,
+) -> dict:
+    """Deeply analyze one of the user's own recipes BEFORE publishing it.
+
+    Returns a structured report covering:
+      - every ingredient: quantity present or missing, unit, and whether it is
+        gram-weighted (so a `scale` weighing step can be inserted for it)
+      - whether the recipe has a `scale` device step, and a warning when
+        gram-weighted ingredients exist but no weighing step does
+      - every step: title present, description length, and whether it carries
+        a device program (customized / steaming / slow_cooking / scale / ...)
+      - totals: step count, device-program step count, ingredient groups,
+        prep/ready minutes
+      - `issues` (must be fixed before publishing) and `warnings` (should be
+        considered)
+
+    Call this after create_recipe/edit_recipe and before publish_recipe, fix
+    whatever it reports, then publish.
+
+    Requires a saved login session: run `uv run monsieur-cuisine-mcp-login`
+    once beforehand.
+
+    Args:
+        recipe_id: Numeric id of the user's own recipe to analyze.
+        language: Locale, e.g. "pl-PL", "en-US".
+    """
+    from .recipes import lifecycle
+    raw = await lifecycle._get_own_recipe(recipe_id, language, action="publish-check")
+    return analysis.analyze_recipe_details(raw)
+
+
+@mcp.tool
+async def list_paprika_recipes(zip_path: str) -> dict:
+    """List the recipes inside a Paprika app export archive (.paprikarecipes.zip).
+
+    Read-only preview of what the export contains: one entry per recipe with
+    its name, servings, difficulty, Paprika categories and whether it has an
+    embedded photo. Use get_paprika_recipe to preview the full Monsieur
+    Cuisine conversion of one recipe, or import_paprika_recipes to create and
+    publish them on the user's account.
+
+    Args:
+        zip_path: Path to the .paprikarecipes.zip export file (e.g. from
+            Paprika's "Export all recipes").
+    """
+    return recipes.list_paprika_recipes(zip_path=zip_path)
+
+
+@mcp.tool
+async def get_paprika_recipe(
+    zip_path: str,
+    name: str,
+    language: str = MC_API_DEFAULT_LANGUAGE,
+) -> dict:
+    """Preview how ONE recipe from a Paprika export converts to a Monsieur
+    Cuisine Smart recipe, without creating anything.
+
+    Returns the parsed Paprika fields plus the converted payload: ingredients
+    split into amount/unit/name, direction sentences mapped onto device
+    programs (Thermomix "3 sec/speed 7" -> customized, "5 min/120°C/speed 1"
+    -> customized, "212°F/reverse speed 1" -> customized reverse, "weigh 50 g"
+    -> scale, oven/simmer notation -> roasting/slow_cooking/steaming/kneading),
+    mapped category/complexity ids, parsed servings/times/nutrition, and the
+    extracted cover-image file. Review a tricky conversion here, fix it with
+    create_recipe/edit_recipe if needed - or skip straight to
+    import_paprika_recipes, which does the same conversion automatically.
+
+    Args:
+        zip_path: Path to the .paprikarecipes.zip export file.
+        name: Recipe-name substring, e.g. "Arrabbiata".
+        language: Locale, e.g. "en-US".
+    """
+    return await recipes.get_paprika_recipe(zip_path=zip_path, name=name, language=language)
+
+
+@mcp.tool
+async def import_paprika_recipes(
+    zip_path: str,
+    names: list[str] | None = None,
+    publish: bool = True,
+    private: bool = True,
+    skip_existing: bool = True,
+    limit: int | None = None,
+    language: str = MC_API_DEFAULT_LANGUAGE,
+) -> dict:
+    """Import recipes from a Paprika export archive onto the user's Monsieur
+    Cuisine account, converting each one and (by default) publishing it.
+
+    For every selected recipe this: splits the ingredient lines into
+    amount/unit/name ("30 g olive oil"), maps the Thermomix-style directions
+    onto Monsieur Cuisine Smart device programs (customized / slow_cooking /
+    roasting / steaming / kneading / scale - including a `scale` weighing step
+    wherever the recipe calls for weighing), parses servings, prep/total times
+    and the nutritional_info block, uploads the embedded photo as cover image,
+    maps the Paprika categories/difficulty onto the language's MC category and
+    complexity ids, then creates the recipe and (publish=True) publishes it
+    immediately - private=True publishes only to the user's own account (no
+    editorial review), private=False submits it for public review.
+
+    A recipe that fails the publish-completeness check stays as a draft and
+    its `publish_error` is reported; fix it with edit_recipe + analyze_recipe,
+    then publish_recipe. Re-running with skip_existing=True never creates
+    duplicates (recipes already among the user's own are skipped).
+
+    Args:
+        zip_path: Path to the .paprikarecipes.zip export file.
+        names: Optional recipe-name substrings to import only those recipes
+            (e.g. ["chicken", "soup"]); omit to import the whole export.
+        publish: Publish each imported recipe (default True).
+        private: Publish privately to the user's own account (default True).
+        skip_existing: Skip recipes whose title already exists among the
+            user's own recipes (default True).
+        limit: Optional cap on recipes imported in this call - use to work
+            through a large export in batches.
+        language: Locale, e.g. "en-US".
+    """
+    return await recipes.import_paprika_recipes(
+        zip_path=zip_path, names=names, publish=publish, private=private,
+        skip_existing=skip_existing, limit=limit, language=language,
+    )
 
 
 def main() -> None:
