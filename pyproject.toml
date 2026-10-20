@@ -3,9 +3,10 @@ name = "monsieur-cuisine-mcp"
 version = "0.1.0"
 description = "Unofficial MCP server for integrating with Monsieur Cuisine (Lidl Monsieur Cuisine / LidlOMix)"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "Apache-2.0"
 dependencies = [
+    "cookidoo-api>=0.19.0",
     # Floor is 3.0 because that is the oldest release this has actually run on;
     # the previous ">=2.0.0" was never tested against.
     "fastmcp>=3.0",

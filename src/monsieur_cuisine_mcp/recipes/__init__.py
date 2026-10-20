@@ -7,6 +7,12 @@ keeps working unchanged.
 """
 from .authoring import create_recipe, edit_recipe, get_recipe_creation_options
 from .client import MCRequestError
+from .cookidoo import (
+    cookidoo_login,
+    cookidoo_status,
+    get_cookidoo_recipe,
+    import_cookidoo_recipe,
+)
 from .favorites import (
     add_favorite_recipe,
     list_favorite_recipes,
@@ -29,13 +35,17 @@ from .search import get_recipe, get_recipe_filters, search_recipes
 __all__ = [
     "MCRequestError",
     "add_favorite_recipe",
+    "cookidoo_login",
+    "cookidoo_status",
     "create_recipe",
     "delete_recipe",
     "edit_recipe",
+    "get_cookidoo_recipe",
     "get_paprika_recipe",
     "get_recipe",
     "get_recipe_creation_options",
     "get_recipe_filters",
+    "import_cookidoo_recipe",
     "import_paprika_recipes",
     "list_paprika_recipes",
     "list_favorite_recipes",

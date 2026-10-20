@@ -721,6 +721,105 @@ async def import_paprika_recipes(
     )
 
 
+@mcp.tool
+async def cookidoo_login(
+    email: str | None = None,
+    password: str | None = None,
+    country: str | None = None,
+    language: str | None = None,
+) -> dict:
+    """Log in to Cookidoo (Thermomix's official recipe platform) and cache the
+    auth token, so Cookidoo recipes can be imported afterwards.
+
+    Credentials can be passed explicitly here, or set once via the
+    COOKIDOO_EMAIL / COOKIDOO_PASSWORD environment variables (and optionally
+    COOKIDOO_COUNTRY, default 'gb', and COOKIDOO_LANGUAGE, default 'en-GB')
+    in a .env file in the project root. The token is cached in
+    .cookidoo_token and reused on later calls.
+
+    Args:
+        email: Cookidoo account email (optional if set via env/.env).
+        password: Cookidoo account password (optional if set via env/.env).
+        country: Cookidoo country code, e.g. 'gb', 'de', 'es' (default 'gb').
+        language: Cookidoo language code, e.g. 'en-GB', 'de-DE' (default 'en-GB').
+    """
+    return await recipes.cookidoo_login(
+        email=email, password=password, country=country, language=language
+    )
+
+
+@mcp.tool
+async def cookidoo_status() -> dict:
+    """Report whether Cookidoo credentials and a cached token are available."""
+    return await recipes.cookidoo_status()
+
+
+@mcp.tool
+async def get_cookidoo_recipe(
+    recipe_ref: str,
+    email: str | None = None,
+    password: str | None = None,
+    country: str | None = None,
+    language: str | None = None,
+    mc_language: str = MC_API_DEFAULT_LANGUAGE,
+) -> dict:
+    """Preview how ONE Cookidoo recipe converts to a Monsieur Cuisine Smart
+    recipe, without creating anything.
+
+    Accepts a Cookidoo recipe id (e.g. 'r59322') or a full Cookidoo URL
+    (e.g. 'https://cookidoo.co.uk/recipes/recipe/en-GB/r59322'). Requires a
+    prior cookidoo_login (or COOKIDOO_EMAIL/COOKIDOO_PASSWORD env vars).
+
+    Returns the parsed Cookidoo fields plus the converted payload: ingredients
+    (amount/unit/name), steps with detected device programs (Thermomix
+    '3 sec/speed 7' -> customized, '15 min/100°C/speed 1' -> customized,
+    oven/Varoma -> roasting/steaming/slow_cooking/kneading, 'weigh N g' -> scale),
+    mapped category/complexity ids, parsed servings/times/nutrition, and the
+    downloaded cover-image file.
+
+    Args:
+        recipe_ref: Cookidoo recipe id or URL.
+        email/password/country/language: Optional Cookidoo credentials override.
+        mc_language: Monsieur Cuisine locale, e.g. 'en-US'.
+    """
+    return await recipes.get_cookidoo_recipe(
+        recipe_ref=recipe_ref, email=email, password=password, country=country,
+        language=language, mc_language=mc_language,
+    )
+
+
+@mcp.tool
+async def import_cookidoo_recipe(
+    recipe_ref: str,
+    publish: bool = True,
+    private: bool = True,
+    email: str | None = None,
+    password: str | None = None,
+    country: str | None = None,
+    language: str | None = None,
+    mc_language: str = MC_API_DEFAULT_LANGUAGE,
+) -> dict:
+    """Import ONE Cookidoo recipe into the user's Monsieur Cuisine account.
+
+    Fetches the recipe from Cookidoo (Thermomix settings included), converts it
+    (ingredients split, Thermomix -> MC Smart device programs, times, servings,
+    nutrition, cover photo), creates the recipe and (publish=True) publishes it.
+    private=True publishes only to the user's own account (no editorial review).
+
+    Args:
+        recipe_ref: Cookidoo recipe id or URL.
+        publish: Publish after creating (default True).
+        private: Publish privately (default True).
+        email/password/country/language: Optional Cookidoo credentials override.
+        mc_language: Monsieur Cuisine locale, e.g. 'en-US'.
+    """
+    return await recipes.import_cookidoo_recipe(
+        recipe_ref=recipe_ref, publish=publish, private=private, email=email,
+        password=password, country=country, language=language,
+        mc_language=mc_language,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Monsieur Cuisine MCP server")
     parser.add_argument(

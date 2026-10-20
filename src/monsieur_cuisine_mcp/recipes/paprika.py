@@ -384,6 +384,14 @@ _SPEED_RE = re.compile(r"speed\s*(\d+(?:\.\d+)?)", re.I)
 _REVERSE_RE = re.compile(r"\breverse\b|counter-?clockwise", re.I)
 
 
+_DIRECTIVE_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:secs?|seconds?|mins?|minutes?)\s*/\s*"
+    r"(?:\d{2,3}\s*°?\s*(?:C|F|celsius|fahrenheit)\s*/\s*)?"
+    r"(?:speed\s*)?\d+(?:\.\d+)?",
+    re.I,
+)
+
+
 def _detect_program(text: str) -> tuple[str | None, dict]:
     """Map one instruction sentence to an MC Smart device program.
 
@@ -412,13 +420,58 @@ def _detect_program(text: str) -> tuple[str | None, dict]:
         if ounces:
             return "scale", {"weight_grams": round(float(ounces.group(1)) * 28.3495)}
 
-    time_seconds: int | None = None
+    # Prefer a contiguous Thermomix directive so we never mix numbers from two
+    # directives that share one sentence ("chop 3 sec/speed 7, then sauté
+    # 3 min/120°C/speed 1").
+    directive_match = _DIRECTIVE_RE.search(lower)
+    if directive_match:
+        chunk = directive_match.group(0)
+        time_seconds = None
+        m = _TIME_RE.search(chunk)
+        if m:
+            value = float(m.group(1))
+            time_seconds = int(round(value * (60 if m.group(2).lower().startswith("min") else 1)))
+        temperature = None
+        m = _TEMP_C_RE.search(chunk)
+        if m:
+            temperature = int(m.group(1))
+        else:
+            m = _TEMP_F_RE.search(chunk)
+            if m:
+                temperature = round((int(m.group(1)) - 32) * 5 / 9)
+        if temperature is None and re.search(r"\bvaroma\b", chunk):
+            temperature = 120
+        m = _SPEED_RE.search(chunk)
+        speed = float(m.group(1)) if m else None
+        reverse = bool(_REVERSE_RE.search(lower))
+
+        if speed is not None:
+            params = {}
+            if time_seconds is not None:
+                params["time_seconds"] = time_seconds
+            if temperature is not None:
+                params["temperature_celsius"] = temperature
+            params["speed"] = int(round(speed))
+            if reverse:
+                params["reverse"] = True
+            return "customized", params
+        if temperature is not None and time_seconds is not None:
+            params = {"temperature_celsius": temperature, "time_seconds": time_seconds}
+            if re.search(r"\boven\b|\bbake|\broast", lower):
+                return "roasting", params
+            if re.search(r"\bsteam", lower):
+                return "steaming", {"time_seconds": time_seconds}
+            if temperature <= 100:
+                return "slow_cooking", params
+            return "customized", {**params, "speed": 1}
+
+    # Fallback: independent extraction (Varoma-only, steam-without-slash, etc.)
+    time_seconds = None
     m = _TIME_RE.search(lower)
     if m:
         value = float(m.group(1))
         time_seconds = int(round(value * (60 if m.group(2).lower().startswith("min") else 1)))
-
-    temperature: int | None = None
+    temperature = None
     m = _TEMP_C_RE.search(lower)
     if m:
         temperature = int(m.group(1))
@@ -427,24 +480,21 @@ def _detect_program(text: str) -> tuple[str | None, dict]:
         if m:
             temperature = round((int(m.group(1)) - 32) * 5 / 9)
     if temperature is None and re.search(r"\bvaroma\b", lower):
-        temperature = 120  # Thermomix Varoma = steaming temperature ~120C
-
+        temperature = 120
     m = _SPEED_RE.search(lower)
     speed = float(m.group(1)) if m else None
     reverse = bool(_REVERSE_RE.search(lower))
 
     if speed is not None:
-        params: dict = {}
+        params = {}
         if time_seconds is not None:
             params["time_seconds"] = time_seconds
         if temperature is not None:
             params["temperature_celsius"] = temperature
-        # The API only accepts whole-number speeds ("speed 3-6" -> 3).
         params["speed"] = int(round(speed))
         if reverse:
             params["reverse"] = True
         return "customized", params
-
     if temperature is not None and time_seconds is not None:
         params = {"temperature_celsius": temperature, "time_seconds": time_seconds}
         if re.search(r"\boven\b|\bbake|\broast", lower):
@@ -454,7 +504,6 @@ def _detect_program(text: str) -> tuple[str | None, dict]:
         if temperature <= 100:
             return "slow_cooking", params
         return "customized", {**params, "speed": 1}
-
     if time_seconds is not None:
         if re.search(r"\bsteam", lower):
             return "steaming", {"time_seconds": time_seconds}
@@ -462,6 +511,7 @@ def _detect_program(text: str) -> tuple[str | None, dict]:
             return "kneading", {"time_seconds": time_seconds}
 
     return None, {}
+
 
 
 def _map_directions_to_steps(text: str) -> list[dict]:

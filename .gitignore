@@ -47,3 +47,8 @@ CLAUDE.local.md
 # Monsieur Cuisine MCP - persisted login session (cookies), never commit
 storage_state.json
 .auth/
+
+# Cookidoo credentials / token (never commit)
+.env
+.cookidoo_token
+

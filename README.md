@@ -234,8 +234,13 @@ assistant driving the changes. It keeps the original tools intact and adds:
 - **Pre-publish analysis** (`analyze_recipe`) and a publish gate: `publish_recipe`
   now runs the analyzer first and refuses to publish recipes with blocking
   issues (missing quantities, empty step titles, missing cover photo).
-- **Private publishing by default** for the user's own collection, plus nutrient
-  lookup/estimation guidance.
+- **Cookidoo import** (`cookidoo_login`, `cookidoo_status`, `get_cookidoo_recipe`,
+  `import_cookidoo_recipe`): logs in to Cookidoo (Thermomix's official recipe
+  platform) via the unofficial `cookidoo-api` package and imports a recipe by id
+  or URL, converting Thermomix steps to MC Smart programs, parsing nutrition,
+  uploading the cover photo, and creating/publishing. Credentials via
+  `COOKIDOO_EMAIL`/`COOKIDOO_PASSWORD` env vars or a `.env` file (gitignored);
+  the auth token is cached in `.cookidoo_token`.
 
 Treat this fork with the same caution as the upstream: reverse-engineered API,
 no unit tests, writes to your real account.
